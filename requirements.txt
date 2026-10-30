@@ -1,0 +1,4 @@
+groq>=1.7.0
+pydub>=0.25.1
+imageio-ffmpeg>=0.7.0
+pywebview>=5.1

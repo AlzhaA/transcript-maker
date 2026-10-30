@@ -1,0 +1,25 @@
+# Secrets and API Keys
+config.json
+.env
+
+# Transcripts and media output
+output/
+*.wav
+*.mp3
+*.m4a
+*.aac
+*.mp4
+*.flac
+*.ogg
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.spec
+
+# OS / Editor files
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

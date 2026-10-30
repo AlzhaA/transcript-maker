@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transkrip Rapat Offline AI (Groq Whisper)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🎙️</div>
+      <div class="brand-text">
+        <h1>Transkrip Rapat Offline & Audio</h1>
+        <p>Akurasi Penuh Bahasa Indonesia • Timestamp Lengkap • Groq Whisper AI</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-secondary" id="btn-settings">
+        <span>⚙️</span> Pengaturan API
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main>
+    <!-- Left Column: Upload & Actions -->
+    <div class="sidebar">
+      
+      <!-- Audio Upload Card -->
+      <div class="card">
+        <div class="card-title">
+          <span>📁</span> File Audio Rekaman
+        </div>
+
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-icon">🎧</div>
+          <div class="drop-text" id="drop-text">Klik atau Tarik File Audio ke Sini</div>
+          <div class="drop-subtext">Mendukung MP3, M4A, WAV, AAC, MP4, FLAC (bisa 2+ jam)</div>
+        </div>
+
+        <!-- File Info Preview -->
+        <div class="file-info-box" id="file-info-box">
+          <div class="file-info-row">
+            <span class="label">Nama File:</span>
+            <span class="val" id="info-name">-</span>
+          </div>
+          <div class="file-info-row">
+            <span class="label">Ukuran:</span>
+            <span class="val" id="info-size">-</span>
+          </div>
+          <div class="file-info-row">
+            <span class="label">Estimasi Durasi:</span>
+            <span class="val" id="info-duration" style="color: var(--accent-cyan);">-</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <button class="btn-primary" id="btn-transcribe" disabled>
+            <span>▶️</span> Mulai Transkripsi
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Progress Card -->
+      <div class="card progress-card" id="progress-card">
+        <div class="card-title">
+          <span>⏳</span> Status Proses
+        </div>
+        <div class="progress-header">
+          <span id="progress-phase">Memulai...</span>
+          <span id="progress-pct" style="font-weight: 700; color: var(--accent-cyan);">0%</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-status" id="progress-status">
+          Menyiapkan pemrosesan audio...
+        </div>
+      </div>
+
+      <!-- Tips Card -->
+      <div class="card" style="background: rgba(17, 24, 39, 0.4); border-style: dashed;">
+        <div class="card-title" style="font-size: 11px; margin-bottom: 6px;">
+          <span>💡</span> Informasi Pemrosesan
+        </div>
+        <p style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.5;">
+          • File audio berdurasi panjang (hingga 2–3 jam) otomatis dipecah menjadi potongan 10 menit agar aman dari limit upload.<br>
+          • Setiap baris percakapan otomatis diberi penanda waktu (timestamp) akurat dan dipisahkan dengan rapi.
+        </p>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Live Transcript Display -->
+    <div class="content-area">
+      
+      <!-- Content Header -->
+      <div class="content-header">
+        <div class="content-header-title">
+          <h2 style="font-size: 14px; font-weight: 600;">Hasil Transkrip Lengkap</h2>
+          <span class="badge-count" id="badge-count">0 baris</span>
+        </div>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="Cari kata di transkrip...">
+        </div>
+      </div>
+
+      <!-- Transcript Rows Container -->
+      <div class="transcript-list" id="transcript-list">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-state-icon">📝</div>
+          <p style="font-size: 14px; font-weight: 500;">Belum ada transkrip</p>
+          <p style="font-size: 12px; max-width: 300px; text-align: center;">
+            Pilih file rekaman audio rapat Anda di sebelah kiri, lalu klik <b>Mulai Transkripsi</b>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Content Footer Actions -->
+      <div class="content-footer">
+        <div class="footer-stats" id="footer-stats">
+          Siap digunakan
+        </div>
+        <div class="footer-buttons">
+          <button class="btn-secondary" id="btn-copy">
+            <span>📋</span> Salin Semua
+          </button>
+          <button class="btn-secondary" id="btn-download-txt">
+            <span>📄</span> Simpan .TXT
+          </button>
+          <button class="btn-secondary" id="btn-download-md">
+            <span>📝</span> Simpan .MD
+          </button>
+          <button class="btn-secondary" id="btn-open-folder" title="Buka folder output">
+            <span>📁</span> Folder Output
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ Pengaturan Groq API</h2>
+        <button class="close-btn" id="modal-close">&times;</button>
+      </div>
+
+      <div class="form-group">
+        <label for="cfg-api-key">Groq API Key:</label>
+        <input type="password" id="cfg-api-key" class="form-control" placeholder="gsk_...">
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          Kunci API dari console.groq.com (Free Tier).
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label for="cfg-model">Whisper Model:</label>
+        <select id="cfg-model" class="form-control">
+          <option value="whisper-large-v3">whisper-large-v3 (Akurasi Terbaik / Rekomendasi)</option>
+          <option value="whisper-large-v3-turbo">whisper-large-v3-turbo (Kecepatan Tinggi)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="cfg-language">Bahasa Utama:</label>
+        <input type="text" id="cfg-language" class="form-control" value="id">
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          Gunakan kode <b>id</b> untuk Bahasa Indonesia.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label for="cfg-chunk">Ukuran Potongan Audio (Menit):</label>
+        <input type="number" id="cfg-chunk" class="form-control" value="10" min="2" max="20">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+        <button class="btn-secondary" id="btn-cancel-settings">Batal</button>
+        <button class="btn-primary" style="width: auto; padding: 8px 18px;" id="btn-save-settings">Simpan Pengaturan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
