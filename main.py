@@ -227,14 +227,15 @@ def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     api = DesktopAPI()
     
-    # Create pywebview desktop window
+    # Create pywebview desktop window in Modern Light Mode
     window = webview.create_window(
         title="🎙️ Transkrip Rapat Offline & Notulensi AI (Groq)",
         url=INDEX_HTML,
         js_api=api,
         width=1120,
         height=780,
-        min_size=(860, 620)
+        min_size=(860, 620),
+        background_color="#F8FAFC"
     )
     api._set_window(window)
     

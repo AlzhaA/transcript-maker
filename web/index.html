@@ -14,7 +14,7 @@
       <div class="brand-icon">🎙️</div>
       <div class="brand-text">
         <h1>Transkrip Rapat & Notulensi AI</h1>
-        <p>Akurasi Tinggi Bahasa Indonesia • Notulensi Komprehensif • Groq AI</p>
+        <p>Akurasi Penuh Bahasa Indonesia • Notulensi Komprehensif • Powered by Groq</p>
       </div>
     </div>
     <div class="header-actions">
@@ -53,16 +53,16 @@
           </div>
           <div class="file-info-row">
             <span class="label">Estimasi Durasi:</span>
-            <span class="val" id="info-duration" style="color: var(--accent-cyan);">-</span>
+            <span class="val" id="info-duration" style="color: var(--primary);">-</span>
           </div>
         </div>
 
-        <!-- Meeting Title Form Input (NEW) -->
+        <!-- Meeting Title Form Input -->
         <div class="form-group" style="margin-top: 14px; margin-bottom: 6px;">
-          <label for="meeting-title" style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #e5e7eb; font-size: 12px; margin-bottom: 6px;">
-            <span>🏷️</span> Judul Rapat (Untuk Notulensi):
+          <label for="meeting-title">
+            🏷️ Judul Rapat (Untuk Notulensi):
           </label>
-          <input type="text" id="meeting-title" class="form-control" placeholder="Contoh: Rapat Evaluasi Proyek Website" style="background: #111827; border-color: #4b5563;">
+          <input type="text" id="meeting-title" class="form-control" placeholder="Contoh: Rapat Evaluasi Proyek Website">
         </div>
 
         <div style="margin-top: 14px;">
@@ -78,8 +78,8 @@
           <span>⏳</span> Status Proses
         </div>
         <div class="progress-header">
-          <span id="progress-phase">Memulai...</span>
-          <span id="progress-pct" style="font-weight: 700; color: var(--accent-cyan);">0%</span>
+          <span id="progress-phase" style="font-weight: 600;">Memulai...</span>
+          <span id="progress-pct" style="font-weight: 700; color: var(--primary);">0%</span>
         </div>
         <div class="progress-bar-bg">
           <div class="progress-bar-fill" id="progress-fill"></div>
@@ -90,16 +90,16 @@
       </div>
 
       <!-- Format Notulensi Info -->
-      <div class="card" style="background: rgba(17, 24, 39, 0.4); border-style: dashed;">
-        <div class="card-title" style="font-size: 11px; margin-bottom: 6px;">
+      <div class="card" style="background: #f8fafc; border: 1px dashed #cbd5e1;">
+        <div class="card-title" style="font-size: 11px; margin-bottom: 8px;">
           <span>📋</span> Format Notulensi Khusus
         </div>
-        <p style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.5;">
-          Notulensi disusun otomatis secara komprehensif:<br>
-          <code style="color: var(--accent-cyan);">[Judul]</code><br>
-          <code style="color: var(--accent-cyan);">[Pokok pembahasan]</code><br>
-          <code style="color: var(--accent-cyan);">[Isi Notulen]</code><br>
-          <code style="color: var(--accent-cyan);">[Kesimpulan]</code>
+        <p style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.6;">
+          Disusun terstruktur dan komprehensif:<br>
+          <code style="color: var(--primary); font-weight: 600;">[Judul]</code><br>
+          <code style="color: var(--primary); font-weight: 600;">[Pokok pembahasan]</code><br>
+          <code style="color: var(--primary); font-weight: 600;">[Isi Notulen]</code><br>
+          <code style="color: var(--primary); font-weight: 600;">[Kesimpulan]</code>
         </p>
       </div>
 
@@ -137,22 +137,22 @@
         <div class="transcript-list" id="transcript-list">
           <div class="empty-state" id="empty-state">
             <div class="empty-state-icon">📝</div>
-            <p style="font-size: 14px; font-weight: 500;">Belum ada transkrip</p>
-            <p style="font-size: 12px; max-width: 320px; text-align: center; color: var(--text-muted);">
+            <p style="font-size: 14.5px; font-weight: 600; color: var(--text-primary);">Belum Ada Transkrip</p>
+            <p style="font-size: 12px; max-width: 320px; text-align: center; color: var(--text-muted); line-height: 1.5;">
               Pilih file rekaman audio rapat di sebelah kiri, isi judul rapat, lalu klik <b>Mulai Transkripsi</b>.
             </p>
           </div>
         </div>
       </div>
 
-      <!-- TAB 2: Notulensi View (NEW) -->
+      <!-- TAB 2: Notulensi View -->
       <div class="tab-content" id="view-notulensi">
         <div class="notulensi-container" id="notulensi-container">
           <div class="empty-state" id="notulensi-empty-state">
             <div class="empty-state-icon">📋</div>
-            <p style="font-size: 14px; font-weight: 500;">Notulensi Belum Dibuat</p>
-            <p style="font-size: 12px; max-width: 340px; text-align: center; color: var(--text-muted);">
-              Setelah transkripsi selesai, klik tombol <b>✨ Buat Notulensi AI</b> untuk menghasilkan ringkasan komprehensif terstruktur.
+            <p style="font-size: 14.5px; font-weight: 600; color: var(--text-primary);">Notulensi Belum Dibuat</p>
+            <p style="font-size: 12px; max-width: 360px; text-align: center; color: var(--text-secondary); line-height: 1.5;">
+              Setelah proses transkripsi selesai, klik tombol ungu <b>✨ Buat Notulensi AI</b> di kanan atas kapan pun Anda ingin AI menyusun notulensi komprehensif.
             </p>
           </div>
           <div class="notulensi-content-box" id="notulensi-content-box" style="display: none;">

@@ -219,11 +219,12 @@ window.transcriptionFinished = function (res) {
   currentBaseName = res.base_name || "";
   btnGenerateNotulensi.disabled = false;
 
-  footerStats.textContent = `Selesai (${res.total_lines} baris, ${res.duration_formatted}) • Siap membuat notulensi`;
+  footerStats.textContent = `Transkrip selesai (${res.total_lines} baris, ${res.duration_formatted}) • Siap membuat notulensi jika diinginkan`;
 
-  // Auto trigger notulensi generation
-  const autoTitle = meetingTitleInput.value.trim() || res.base_name || "Notulensi Rapat";
-  generateNotulensiAction(autoTitle);
+  // Do NOT automatically generate notulensi - preserve Groq tokens and let user review first!
+  alert(
+    `Transkripsi Berhasil!\nTotal: ${res.total_lines} baris percakapan.\nFile tersimpan di:\n${res.output_txt}\n\nKlik tombol ungu '✨ Buat Notulensi AI' di kanan atas kapan pun Anda ingin menyusun notulensi rapat.`
+  );
 };
 
 window.transcriptionError = function (errMsg) {
