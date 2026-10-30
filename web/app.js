@@ -219,7 +219,9 @@ window.transcriptionFinished = function (res) {
   currentBaseName = res.base_name || "";
   btnGenerateNotulensi.disabled = false;
 
-  footerStats.textContent = `Transkrip selesai (${res.total_lines} baris, ${res.duration_formatted}) • Siap membuat notulensi jika diinginkan`;
+  const shortName = res.output_txt ? res.output_txt.split(/[\\/]/).pop() : "";
+  footerStats.textContent = `Transkrip selesai (${res.total_lines} baris, ${res.duration_formatted}) • File: ${shortName}`;
+  footerStats.title = res.output_txt || "";
 
   // Do NOT automatically generate notulensi - preserve Groq tokens and let user review first!
   alert(
@@ -287,7 +289,9 @@ window.notulensiFinished = function (res) {
   notulensiTextDisplay.textContent = currentNotulensiText;
 
   switchTab("notulensi");
-  footerStats.textContent = `Notulensi selesai disusun • Tersimpan di: ${res.output_md}`;
+  const shortName = res.output_md ? res.output_md.split(/[\\/]/).pop() : "";
+  footerStats.textContent = `Notulensi selesai disusun • File: ${shortName}`;
+  footerStats.title = res.output_md || "";
 };
 
 window.notulensiError = function (errMsg) {
