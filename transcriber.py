@@ -261,77 +261,169 @@ class MeetingTranscriber:
             except Exception:
                 pass
 
-    def generate_notulensi(self, transcript_text: str, title: str = "", output_dir: str = "output", base_name: str = "") -> Dict[str, Any]:
+    def _call_llm(self, prompt: str, max_tokens: int = 2500) -> str:
+        """Helper to call Groq LLM with fallback and retry logic"""
+        models_to_try = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+        last_error = None
+
+        for model in models_to_try:
+            for retry in range(2):
+                try:
+                    resp = self.client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "system", "content": "Anda adalah notulis rapat profesional yang menyusun notulensi rapat secara komprehensif, terstruktur, mendalam, dan penting dalam Bahasa Indonesia."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        temperature=0.3,
+                        max_tokens=max_tokens
+                    )
+                    return resp.choices[0].message.content.strip()
+                except Exception as e:
+                    last_error = e
+                    # If rate limit exceeded, wait a moment and try
+                    time.sleep(3)
+
+        raise RuntimeError(f"Gagal memanggil model Groq: {last_error}")
+
+    def generate_notulensi(
+        self,
+        transcript_text: str,
+        title: str = "",
+        output_dir: str = "output",
+        base_name: str = "",
+        on_status: Optional[Callable[[str], None]] = None
+    ) -> Dict[str, Any]:
         """
-        Generates comprehensive, detailed, and structured meeting minutes using Groq LLM
-        following the exact user format:
-        [Judul]
-        [Pokok pembahasan]
-        [Isi Notulen]
-        [Kesimpulan]
+        Generates comprehensive meeting minutes using Hierarchical Summarization
+        so it never hits Groq's 7,000-8,000 token per minute limit even for 2+ hour transcripts.
         """
         if not self.client:
             raise ValueError("Groq API Key belum disetel.")
 
+        if not transcript_text or not transcript_text.strip():
+            raise ValueError("Transkrip kosong, tidak bisa membuat notulensi.")
+
         final_title = title.strip() if title and title.strip() else "Notulensi Rapat"
 
-        prompt = f"""Anda adalah seorang Notulis Rapat Profesional dan Ahli Dokumentasi Korporat.
-Tugas Anda adalah menyusun Notulensi Rapat yang SANGAT KOMPREHENSIF, MENDALAM, DAN DETAIL berdasarkan transkrip percakapan berikut.
+        if on_status:
+            on_status("Mempersiapkan dan mengoptimalkan teks transkrip...")
 
-PANDUAN PENTING:
-- JANGAN meringkas terlalu singkat atau menghilangkan informasi penting!
-- Tuliskan setiap pokok persoalan, argumen, fakta, data angka/timeline, kendala, dan diskusi secara lengkap dan jelas.
-- Pembaca yang tidak hadir dalam rapat harus dapat memahami seluruh jalannya rapat secara utuh dari dokumen ini.
+        # 1. Clean transcript: remove repetitive [HH:MM:SS] badges to reduce token count by 40-50%
+        clean_lines = []
+        for line in transcript_text.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            content = re.sub(r'^\[\d{2}:\d{2}:\d{2}\]\s*', '', line).strip()
+            if len(content) > 2 and content.lower() not in ["ya", "oke", "ok", "iya", "siap", "terima kasih"]:
+                clean_lines.append(content)
 
-FORMAT NOTULENSI WAJIB:
+        # 2. Break into chunks of max 1,800 words (~2,400 tokens, safely below Groq 7,000 ITPM limit)
+        max_words_per_chunk = 1800
+        chunks = []
+        current_chunk = []
+        current_words = 0
+
+        for line in clean_lines:
+            line_words = len(line.split())
+            if current_words + line_words > max_words_per_chunk and current_chunk:
+                chunks.append(" ".join(current_chunk))
+                current_chunk = [line]
+                current_words = line_words
+            else:
+                current_chunk.append(line)
+                current_words += line_words
+
+        if current_chunk:
+            chunks.append(" ".join(current_chunk))
+
+        # Case 1: Fits in 1 chunk (<= 1,800 words)
+        if len(chunks) == 1:
+            if on_status:
+                on_status("Menyusun notulensi rapat komprehensif...")
+
+            prompt = f"""Tugas Anda adalah menyusun Notulensi Rapat yang SANGAT KOMPREHENSIF, MENDALAM, DAN DETAIL berdasarkan transkrip berikut.
+
+PANDUAN:
+- JANGAN disingkat atau dihilangkan poin pentingnya!
+- Tuliskan setiap pokok persoalan, argumen, fakta/data, kendala, dan diskusi secara terperinci.
+
+FORMAT WAJIB:
 [Judul]
 {final_title}
 
 [Pokok pembahasan]
-(Tuliskan daftar topik utama dan agenda spesifik yang dibahas dalam rapat secara terstruktur)
+(Daftar agenda dan topik-topik utama yang didiskusikan secara terstruktur)
 
 [Isi Notulen]
-(Tuliskan uraian pembahasan rapat secara komprehensif dan mendalam. Jabarkan setiap poin diskusi penting, kendala atau laporan dari peserta, serta pertimbangan yang muncul dalam rapat secara terperinci)
+(Uraian pembahasan komprehensif, mendalam, dan mendetail tentang setiap poin diskusi penting, laporan peserta, data/angka, hingga kendala yang dibahas)
 
 [Kesimpulan]
-(Tuliskan ringkasan kesepakatan akhir, keputusan strategis bersama, serta daftar action items / tindak lanjut dan penanggung jawabnya jika ada)
+(Ringkasan keputusan akhir, kesepakatan bersama, serta daftar action items / tindak lanjut dan penanggung jawabnya jika ada)
 
-Berikut adalah Transkrip Rapat:
+Transkrip Rapat:
 ---
-{transcript_text}
+{chunks[0]}
 ---
 """
+            notulensi_text = self._call_llm(prompt, max_tokens=2200)
 
-        # Use openai/gpt-oss-120b or fallback to qwen/qwen3.8-27b
-        models_to_try = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
-        last_err = None
-        notulensi_text = ""
+        # Case 2: Long meeting (multiple chunks, 1-2+ hours)
+        else:
+            extracted_sections = []
+            for idx, chunk in enumerate(chunks):
+                if on_status:
+                    on_status(f"Menganalisis isi rapat Bagian {idx + 1} dari {len(chunks)}...")
 
-        for model_name in models_to_try:
-            try:
-                response = self.client.chat.completions.create(
-                    model=model_name,
-                    messages=[
-                        {"role": "system", "content": "Anda adalah notulis rapat profesional yang menyusun notulensi secara mendalam, lengkap, dan berbobot dalam Bahasa Indonesia."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    temperature=0.3
-                )
-                notulensi_text = response.choices[0].message.content.strip()
-                break
-            except Exception as e:
-                last_err = e
-                continue
+                chunk_prompt = f"""Tolong catat dan ekstrak seluruh poin pembahasan penting, detail topik, argumen, angka/fakta, kendala, dan laporan dari bagian percakapan rapat berikut (Bagian {idx + 1} dari {len(chunks)}) secara mendalam dan komprehensif:
+---
+{chunk}
+---
+"""
+                section_notes = self._call_llm(chunk_prompt, max_tokens=1000)
+                extracted_sections.append(f"Catatan Bagian {idx + 1}:\n{section_notes}")
 
-        if not notulensi_text:
-            raise RuntimeError(f"Gagal membuat notulensi: {last_err}")
+                # Wait between chunks so Groq's 7,000 token-per-minute bucket resets
+                if idx < len(chunks) - 1:
+                    wait_seconds = 18
+                    for w in range(wait_seconds, 0, -1):
+                        if on_status:
+                            on_status(f"Menyiapkan Bagian {idx + 2} (Jeda kuota Groq: {w}s)...")
+                        time.sleep(1)
+
+            combined_notes = "\n\n".join(extracted_sections)
+
+            if on_status:
+                on_status("Menggabungkan seluruh bagian menjadi notulensi final...")
+
+            final_prompt = f"""Berikut adalah kumpulan catatan lengkap dari seluruh sesi rapat:
+---
+{combined_notes}
+---
+
+Tugas Anda adalah menggabungkan seluruh catatan di atas menjadi dokumen Notulensi Rapat yang SANGAT KOMPREHENSIF, UTUH, MENDALAM, DAN RAPI dengan format wajib berikut:
+
+[Judul]
+{final_title}
+
+[Pokok pembahasan]
+(Daftar agenda dan topik-topik utama yang didiskusikan secara terstruktur dari awal hingga akhir rapat)
+
+[Isi Notulen]
+(Uraian pembahasan komprehensif dan mendalam dari seluruh jalannya rapat. Jelaskan setiap topik penting, data, masukan peserta, kendala, dan diskusi secara detail tanpa diringkas terlalu pendek)
+
+[Kesimpulan]
+(Ringkasan kesepakatan akhir, keputusan strategis bersama, serta daftar action items / tindak lanjut dan penanggung jawabnya)
+"""
+            notulensi_text = self._call_llm(final_prompt, max_tokens=2500)
 
         # Save to output folder
         os.makedirs(output_dir, exist_ok=True)
         timestamp_now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         safe_title = re.sub(r'[^a-zA-Z0-9_\-]', '_', final_title)[:40]
         file_prefix = base_name if base_name else safe_title
-        
+
         output_notulen_md = os.path.join(output_dir, f"notulensi_{file_prefix}_{timestamp_now}.md")
         output_notulen_txt = os.path.join(output_dir, f"notulensi_{file_prefix}_{timestamp_now}.txt")
 

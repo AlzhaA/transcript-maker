@@ -154,13 +154,18 @@ class DesktopAPI:
 
     def generate_notulensi(self, transcript_text, title, base_name=""):
         """Generates structured notulensi in background thread"""
+        def _on_status(msg):
+            if self._window:
+                self._window.evaluate_js(f"window.updateNotulensiStatus({json.dumps(msg)});")
+
         def _worker():
             try:
                 res = self._transcriber.generate_notulensi(
                     transcript_text=transcript_text,
                     title=title,
                     output_dir=OUTPUT_DIR,
-                    base_name=base_name
+                    base_name=base_name,
+                    on_status=_on_status
                 )
                 if self._window:
                     self._window.evaluate_js(f"window.notulensiFinished({json.dumps(res)});")

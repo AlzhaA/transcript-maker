@@ -240,6 +240,13 @@ btnGenerateNotulensi.addEventListener("click", () => {
   generateNotulensiAction(title);
 });
 
+window.updateNotulensiStatus = function (statusText) {
+  const statusEl = document.getElementById("notulensi-status-desc");
+  if (statusEl) {
+    statusEl.textContent = statusText;
+  }
+};
+
 async function generateNotulensiAction(title) {
   if (allSegments.length === 0) {
     alert("Transkrip belum ada. Jalankan transkripsi terlebih dahulu.");
@@ -252,10 +259,10 @@ async function generateNotulensiAction(title) {
 
   switchTab("notulensi");
   notulensiEmptyState.innerHTML = `
-    <div class="empty-state-icon" style="animation: spin 2s linear infinite;">⏳</div>
+    <div class="empty-state-icon" style="font-size: 38px;">⏳</div>
     <p style="font-size: 15px; font-weight: 600; color: var(--accent-cyan);">Sedang Menyusun Notulensi Komprehensif...</p>
-    <p style="font-size: 12px; color: var(--text-secondary); max-width: 380px; text-align: center;">
-      Groq AI sedang menganalisis seluruh pembahasan, poin penting, isi notulen, dan kesimpulan rapat.
+    <p id="notulensi-status-desc" style="font-size: 12.5px; color: #cbd5e1; max-width: 420px; text-align: center; line-height: 1.5; margin-top: 6px;">
+      Mempersiapkan teks transkrip...
     </p>
   `;
 
