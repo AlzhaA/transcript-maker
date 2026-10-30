@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transkrip Rapat Offline AI (Groq Whisper)</title>
+  <title>Transkrip Rapat Offline & Notulensi AI (Groq)</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,8 +13,8 @@
     <div class="brand">
       <div class="brand-icon">🎙️</div>
       <div class="brand-text">
-        <h1>Transkrip Rapat Offline & Audio</h1>
-        <p>Akurasi Penuh Bahasa Indonesia • Timestamp Lengkap • Groq Whisper AI</p>
+        <h1>Transkrip Rapat & Notulensi AI</h1>
+        <p>Akurasi Tinggi Bahasa Indonesia • Notulensi Komprehensif • Groq AI</p>
       </div>
     </div>
     <div class="header-actions">
@@ -26,7 +26,7 @@
 
   <!-- Main Grid -->
   <main>
-    <!-- Left Column: Upload & Actions -->
+    <!-- Left Column: Upload, Title & Actions -->
     <div class="sidebar">
       
       <!-- Audio Upload Card -->
@@ -37,7 +37,7 @@
 
         <div class="drop-zone" id="drop-zone">
           <div class="drop-icon">🎧</div>
-          <div class="drop-text" id="drop-text">Klik atau Tarik File Audio ke Sini</div>
+          <div class="drop-text" id="drop-text">Klik untuk Memilih File Audio</div>
           <div class="drop-subtext">Mendukung MP3, M4A, WAV, AAC, MP4, FLAC (bisa 2+ jam)</div>
         </div>
 
@@ -55,6 +55,14 @@
             <span class="label">Estimasi Durasi:</span>
             <span class="val" id="info-duration" style="color: var(--accent-cyan);">-</span>
           </div>
+        </div>
+
+        <!-- Meeting Title Form Input (NEW) -->
+        <div class="form-group" style="margin-top: 14px; margin-bottom: 6px;">
+          <label for="meeting-title" style="display: flex; align-items: center; gap: 6px; font-weight: 600; color: #e5e7eb; font-size: 12px; margin-bottom: 6px;">
+            <span>🏷️</span> Judul Rapat (Untuk Notulensi):
+          </label>
+          <input type="text" id="meeting-title" class="form-control" placeholder="Contoh: Rapat Evaluasi Proyek Website" style="background: #111827; border-color: #4b5563;">
         </div>
 
         <div style="margin-top: 14px;">
@@ -81,42 +89,75 @@
         </div>
       </div>
 
-      <!-- Tips Card -->
+      <!-- Format Notulensi Info -->
       <div class="card" style="background: rgba(17, 24, 39, 0.4); border-style: dashed;">
         <div class="card-title" style="font-size: 11px; margin-bottom: 6px;">
-          <span>💡</span> Informasi Pemrosesan
+          <span>📋</span> Format Notulensi Khusus
         </div>
         <p style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.5;">
-          • File audio berdurasi panjang (hingga 2–3 jam) otomatis dipecah menjadi potongan 10 menit agar aman dari limit upload.<br>
-          • Setiap baris percakapan otomatis diberi penanda waktu (timestamp) akurat dan dipisahkan dengan rapi.
+          Notulensi disusun otomatis secara komprehensif:<br>
+          <code style="color: var(--accent-cyan);">[Judul]</code><br>
+          <code style="color: var(--accent-cyan);">[Pokok pembahasan]</code><br>
+          <code style="color: var(--accent-cyan);">[Isi Notulen]</code><br>
+          <code style="color: var(--accent-cyan);">[Kesimpulan]</code>
         </p>
       </div>
 
     </div>
 
-    <!-- Right Column: Live Transcript Display -->
+    <!-- Right Column: Transcripts & Notulensi -->
     <div class="content-area">
       
-      <!-- Content Header -->
+      <!-- Content Header with Navigation Tabs -->
       <div class="content-header">
-        <div class="content-header-title">
-          <h2 style="font-size: 14px; font-weight: 600;">Hasil Transkrip Lengkap</h2>
-          <span class="badge-count" id="badge-count">0 baris</span>
+        <div class="tabs-header">
+          <button class="tab-btn active" id="tab-btn-transcript">
+            <span>📝</span> Transkrip Percakapan
+            <span class="badge-count" id="badge-count">0 baris</span>
+          </button>
+          <button class="tab-btn" id="tab-btn-notulensi">
+            <span>📋</span> Notulensi Rapat AI
+            <span class="badge-notulensi" id="badge-notulensi">AI</span>
+          </button>
         </div>
-        <div class="search-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="search-input" placeholder="Cari kata di transkrip...">
+
+        <div class="header-right-tools">
+          <button class="btn-generate-ai" id="btn-generate-notulensi" disabled title="Buat Notulensi Terstruktur dari Transkrip">
+            <span>✨</span> Buat Notulensi AI
+          </button>
+          <div class="search-box" id="search-box-container">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="Cari di transkrip...">
+          </div>
         </div>
       </div>
 
-      <!-- Transcript Rows Container -->
-      <div class="transcript-list" id="transcript-list">
-        <div class="empty-state" id="empty-state">
-          <div class="empty-state-icon">📝</div>
-          <p style="font-size: 14px; font-weight: 500;">Belum ada transkrip</p>
-          <p style="font-size: 12px; max-width: 300px; text-align: center;">
-            Pilih file rekaman audio rapat Anda di sebelah kiri, lalu klik <b>Mulai Transkripsi</b>.
-          </p>
+      <!-- TAB 1: Transcripts View -->
+      <div class="tab-content active" id="view-transcript">
+        <div class="transcript-list" id="transcript-list">
+          <div class="empty-state" id="empty-state">
+            <div class="empty-state-icon">📝</div>
+            <p style="font-size: 14px; font-weight: 500;">Belum ada transkrip</p>
+            <p style="font-size: 12px; max-width: 320px; text-align: center; color: var(--text-muted);">
+              Pilih file rekaman audio rapat di sebelah kiri, isi judul rapat, lalu klik <b>Mulai Transkripsi</b>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Notulensi View (NEW) -->
+      <div class="tab-content" id="view-notulensi">
+        <div class="notulensi-container" id="notulensi-container">
+          <div class="empty-state" id="notulensi-empty-state">
+            <div class="empty-state-icon">📋</div>
+            <p style="font-size: 14px; font-weight: 500;">Notulensi Belum Dibuat</p>
+            <p style="font-size: 12px; max-width: 340px; text-align: center; color: var(--text-muted);">
+              Setelah transkripsi selesai, klik tombol <b>✨ Buat Notulensi AI</b> untuk menghasilkan ringkasan komprehensif terstruktur.
+            </p>
+          </div>
+          <div class="notulensi-content-box" id="notulensi-content-box" style="display: none;">
+            <pre id="notulensi-text-display"></pre>
+          </div>
         </div>
       </div>
 
@@ -127,7 +168,7 @@
         </div>
         <div class="footer-buttons">
           <button class="btn-secondary" id="btn-copy">
-            <span>📋</span> Salin Semua
+            <span>📋</span> Salin
           </button>
           <button class="btn-secondary" id="btn-download-txt">
             <span>📄</span> Simpan .TXT

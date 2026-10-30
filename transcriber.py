@@ -95,9 +95,6 @@ class MeetingTranscriber:
     ) -> Dict[str, Any]:
         """
         Transcribes any audio file (even 2+ hours long) by chunking safely and maintaining exact timestamps.
-        
-        on_progress(percentage, status_text)
-        on_segment(timestamp, text, full_line)
         """
         if not self.client:
             raise ValueError("Groq API Key belum disetel. Masukkan API Key di pengaturan.")
@@ -108,7 +105,6 @@ class MeetingTranscriber:
         if on_progress:
             on_progress(5, "Mengonversi dan menyiapkan audio rapat...")
 
-        # 1. Convert to temporary 16kHz mono WAV using ffmpeg directly (robust across MP3, M4A, WAV, AAC, MP4, etc.)
         temp_dir = tempfile.mkdtemp(prefix="transcribe_")
         temp_wav_path = os.path.join(temp_dir, "meeting_16k.wav")
 
@@ -128,7 +124,6 @@ class MeetingTranscriber:
             if on_progress:
                 on_progress(10, "Membaca data audio yang telah dioptimalkan...")
 
-            # 2. Load the 16kHz mono WAV using AudioSegment.from_wav (no ffprobe needed!)
             audio = AudioSegment.from_wav(temp_wav_path)
             total_duration_ms = len(audio)
             total_duration_sec = total_duration_ms / 1000.0
@@ -164,13 +159,11 @@ class MeetingTranscriber:
                         f"Mentranskripsi Bagian {i + 1} dari {num_chunks} ({chunk_start_str} - {chunk_end_str})..."
                     )
 
-                # Export chunk to in-memory MP3 buffer (48kbps mono is extremely small & fast)
                 chunk_buffer = io.BytesIO()
                 chunk_audio.export(chunk_buffer, format="mp3", bitrate="48k")
                 chunk_buffer.seek(0)
                 chunk_buffer.name = f"chunk_{i}.mp3"
 
-                # Call Groq API with verbose_json
                 retry_count = 0
                 response = None
                 while retry_count < 3:
@@ -189,7 +182,6 @@ class MeetingTranscriber:
                         if retry_count >= 3:
                             raise RuntimeError(f"Gagal memproses bagian {i + 1}: {e}")
 
-                # Parse segments
                 segments = getattr(response, "segments", None)
                 if segments is None and isinstance(response, dict):
                     segments = response.get("segments", [])
@@ -203,11 +195,9 @@ class MeetingTranscriber:
                             seg_start = getattr(seg, "start", 0.0)
                             seg_text = getattr(seg, "text", "").strip()
 
-                        # Filter out empty or hallucinations
                         if not seg_text or seg_text.lower() in HALLUCINATIONS:
                             continue
 
-                        # Calculate global timestamp
                         abs_timestamp_sec = chunk_offset_sec + float(seg_start)
                         ts_badge = format_timestamp(abs_timestamp_sec)
                         formatted_line = f"{ts_badge} {seg_text}"
@@ -223,7 +213,6 @@ class MeetingTranscriber:
                         if on_segment:
                             on_segment(ts_badge, seg_text, formatted_line)
                 else:
-                    # Fallback if no segments provided
                     full_text = getattr(response, "text", str(response)).strip()
                     if full_text and full_text.lower() not in HALLUCINATIONS:
                         ts_badge = format_timestamp(chunk_offset_sec)
@@ -232,7 +221,6 @@ class MeetingTranscriber:
                         if on_segment:
                             on_segment(ts_badge, full_text, formatted_line)
 
-            # 3. Save auto-generated output files (.txt and .md)
             os.makedirs(output_dir, exist_ok=True)
             base_name = os.path.splitext(os.path.basename(file_path))[0]
             timestamp_now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -242,11 +230,9 @@ class MeetingTranscriber:
 
             full_transcript_text = "\n".join(all_lines)
 
-            # Write TXT
             with open(output_txt_path, "w", encoding="utf-8") as f:
                 f.write(full_transcript_text + "\n")
 
-            # Write Markdown
             with open(output_md_path, "w", encoding="utf-8") as f:
                 f.write(f"# Transkrip Rapat: {base_name}\n")
                 f.write(f"- **Waktu Proses**: {datetime.datetime.now().strftime('%d %B %Y, %H:%M:%S')}\n")
@@ -266,11 +252,99 @@ class MeetingTranscriber:
                 "all_lines": all_lines,
                 "full_text": full_transcript_text,
                 "output_txt": output_txt_path,
-                "output_md": output_md_path
+                "output_md": output_md_path,
+                "base_name": base_name
             }
         finally:
-            # Clean up temp folder
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except Exception:
                 pass
+
+    def generate_notulensi(self, transcript_text: str, title: str = "", output_dir: str = "output", base_name: str = "") -> Dict[str, Any]:
+        """
+        Generates comprehensive, detailed, and structured meeting minutes using Groq LLM
+        following the exact user format:
+        [Judul]
+        [Pokok pembahasan]
+        [Isi Notulen]
+        [Kesimpulan]
+        """
+        if not self.client:
+            raise ValueError("Groq API Key belum disetel.")
+
+        final_title = title.strip() if title and title.strip() else "Notulensi Rapat"
+
+        prompt = f"""Anda adalah seorang Notulis Rapat Profesional dan Ahli Dokumentasi Korporat.
+Tugas Anda adalah menyusun Notulensi Rapat yang SANGAT KOMPREHENSIF, MENDALAM, DAN DETAIL berdasarkan transkrip percakapan berikut.
+
+PANDUAN PENTING:
+- JANGAN meringkas terlalu singkat atau menghilangkan informasi penting!
+- Tuliskan setiap pokok persoalan, argumen, fakta, data angka/timeline, kendala, dan diskusi secara lengkap dan jelas.
+- Pembaca yang tidak hadir dalam rapat harus dapat memahami seluruh jalannya rapat secara utuh dari dokumen ini.
+
+FORMAT NOTULENSI WAJIB:
+[Judul]
+{final_title}
+
+[Pokok pembahasan]
+(Tuliskan daftar topik utama dan agenda spesifik yang dibahas dalam rapat secara terstruktur)
+
+[Isi Notulen]
+(Tuliskan uraian pembahasan rapat secara komprehensif dan mendalam. Jabarkan setiap poin diskusi penting, kendala atau laporan dari peserta, serta pertimbangan yang muncul dalam rapat secara terperinci)
+
+[Kesimpulan]
+(Tuliskan ringkasan kesepakatan akhir, keputusan strategis bersama, serta daftar action items / tindak lanjut dan penanggung jawabnya jika ada)
+
+Berikut adalah Transkrip Rapat:
+---
+{transcript_text}
+---
+"""
+
+        # Use openai/gpt-oss-120b or fallback to qwen/qwen3.8-27b
+        models_to_try = ["openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+        last_err = None
+        notulensi_text = ""
+
+        for model_name in models_to_try:
+            try:
+                response = self.client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": "Anda adalah notulis rapat profesional yang menyusun notulensi secara mendalam, lengkap, dan berbobot dalam Bahasa Indonesia."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.3
+                )
+                notulensi_text = response.choices[0].message.content.strip()
+                break
+            except Exception as e:
+                last_err = e
+                continue
+
+        if not notulensi_text:
+            raise RuntimeError(f"Gagal membuat notulensi: {last_err}")
+
+        # Save to output folder
+        os.makedirs(output_dir, exist_ok=True)
+        timestamp_now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_title = re.sub(r'[^a-zA-Z0-9_\-]', '_', final_title)[:40]
+        file_prefix = base_name if base_name else safe_title
+        
+        output_notulen_md = os.path.join(output_dir, f"notulensi_{file_prefix}_{timestamp_now}.md")
+        output_notulen_txt = os.path.join(output_dir, f"notulensi_{file_prefix}_{timestamp_now}.txt")
+
+        with open(output_notulen_md, "w", encoding="utf-8") as f:
+            f.write(notulensi_text + "\n")
+
+        with open(output_notulen_txt, "w", encoding="utf-8") as f:
+            f.write(notulensi_text + "\n")
+
+        return {
+            "success": True,
+            "title": final_title,
+            "notulensi": notulensi_text,
+            "output_md": output_notulen_md,
+            "output_txt": output_notulen_txt
+        }

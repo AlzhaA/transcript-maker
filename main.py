@@ -152,6 +152,26 @@ class DesktopAPI:
         finally:
             self._is_processing = False
 
+    def generate_notulensi(self, transcript_text, title, base_name=""):
+        """Generates structured notulensi in background thread"""
+        def _worker():
+            try:
+                res = self._transcriber.generate_notulensi(
+                    transcript_text=transcript_text,
+                    title=title,
+                    output_dir=OUTPUT_DIR,
+                    base_name=base_name
+                )
+                if self._window:
+                    self._window.evaluate_js(f"window.notulensiFinished({json.dumps(res)});")
+            except Exception as e:
+                if self._window:
+                    self._window.evaluate_js(f"window.notulensiError({json.dumps(str(e))});")
+
+        thread = threading.Thread(target=_worker, daemon=True)
+        thread.start()
+        return True
+
     def copy_to_clipboard(self, text):
         """Copies text to Windows Clipboard"""
         try:
@@ -172,7 +192,7 @@ class DesktopAPI:
                 print("Clipboard error:", e)
                 return False
 
-    def save_dialog(self, content, extension="txt"):
+    def save_dialog(self, content, default_name="dokumen", extension="txt"):
         """Native Windows Save File Dialog"""
         if not self._window:
             return False
@@ -180,7 +200,7 @@ class DesktopAPI:
         file_types = (f"File (*.{extension})", "All Files (*.*)")
         result = self._window.create_file_dialog(
             webview.SAVE_DIALOG,
-            save_filename=f"transkrip_rapat.{extension}",
+            save_filename=f"{default_name}.{extension}",
             file_types=file_types
         )
 
@@ -204,19 +224,20 @@ def main():
     
     # Create pywebview desktop window
     window = webview.create_window(
-        title="🎙️ Transkrip Rapat Offline AI (Groq Whisper)",
+        title="🎙️ Transkrip Rapat Offline & Notulensi AI (Groq)",
         url=INDEX_HTML,
         js_api=api,
-        width=1080,
-        height=760,
-        min_size=(820, 600)
+        width=1120,
+        height=780,
+        min_size=(860, 620)
     )
     api._set_window(window)
     
-    # Also explicitly expose API functions to ensure 100% availability in window.pywebview.api
+    # Explicitly expose API functions to JavaScript
     window.expose(
         api.select_file,
         api.start_transcription,
+        api.generate_notulensi,
         api.get_config,
         api.save_config,
         api.copy_to_clipboard,
